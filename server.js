@@ -5,7 +5,7 @@ const path = require("path");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const ADMIN_PIN = process.env.ADMIN_PIN || "7823";
+const ADMIN_PIN = process.env.ADMIN_PIN;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_MS = 5 * 60 * 1000;
 
@@ -56,7 +56,7 @@ const defaultSiteContent = {
 		{ name: "Python Full Stack", duration: "6 Months • Project Based", modules: ["Python Core + Advanced", "Django/Flask", "Database Integration", "Frontend Essentials", "Testing + Deployment"] },
 		{ name: "MEAN Stack", duration: "5 Months • Web App Focus", modules: ["MongoDB", "Express.js API", "Angular UI", "Node.js Backend", "JWT + CI/CD"] },
 		{ name: "MERN Stack", duration: "5 Months • Startup Stack", modules: ["MongoDB", "Express.js", "React.js", "Node.js", "State Management + Deployment"] },
-		{ name: "Software Testing", duration: "4 Months • Manual + Automation", modules: ["STLC & Bug Lifecycle", "Test Case Design", "Selenium WebDriver", "API Testing (Postman)", "Performance & QA Reports"] },
+		{ name: "Software Testing", duration: "4 Months • Manual + Automation", modules: ["STLC & Bug Lifecycle", "Test Case Design", "Selenium WebDriver", "API Testing (Postman)", "Performance & QA Reporting"] },
 		{ name: "Data Science & Analytics", duration: "6 Months • Data Career Path", modules: ["Python for Data", "Pandas + NumPy", "Visualization", "Machine Learning Basics", "Capstone Analytics Project"] },
 		{ name: "Digital Marketing", duration: "3 Months • Practical Campaigns", modules: ["SEO + SEM", "Social Media Marketing", "Google Ads", "Content Strategy", "Analytics & Reporting"] },
 		{ name: "Cloud Computing", duration: "4 Months • Azure/AWS Basics", modules: ["Cloud Fundamentals", "Virtual Machines", "Storage + Networking", "DevOps Intro", "Cloud Deployment"] },
@@ -244,6 +244,7 @@ function writeSiteContent(content) {
 }
 
 function isAdminAuthorized(req) {
+	if (!ADMIN_PIN) return false;
 	const pinFromHeader = req.headers["x-admin-pin"];
 	return String(pinFromHeader || "") === ADMIN_PIN;
 }
@@ -288,6 +289,7 @@ app.get("/api/health", (_req, res) => {
 		service: "ciit-api",
 		uptimeSeconds: Math.floor(process.uptime()),
 		serverTime: new Date().toISOString(),
+		adminPinConfigured: Boolean(ADMIN_PIN),
 	});
 });
 
@@ -310,6 +312,10 @@ app.get("/api/enrollments", (_req, res) => {
 });
 
 app.post("/api/admin/login", (req, res) => {
+	if (!ADMIN_PIN) {
+		return res.status(503).json({ message: "Admin PIN is not configured on the server." });
+	}
+
 	const clientIp = getClientIp(req);
 	const record = loginAttempts.get(clientIp) || { count: 0, lockedUntil: 0 };
 	const { pin } = req.body || {};
@@ -427,6 +433,10 @@ app.post("/api/enrollments", (req, res) => {
 
 	return res.status(201).json({ message: "Enrollment submitted successfully", enrollment: record });
 });
+
+if (!ADMIN_PIN) {
+	console.warn("WARNING: ADMIN_PIN is not set. Set ADMIN_PIN in environment before enabling admin access.");
+}
 
 app.listen(PORT, () => {
 	console.log(`CIIT server running on http://localhost:${PORT}`);
